@@ -175,10 +175,7 @@ async def main():
 				try:
 					message = json.loads(msg.payload.decode())
 					if totp.verify(message["value"]):
-						# asyncer.syncify(doOutput)(message)
-						loop_ = asyncio.get_event_loop()
-						co_ = doOutput(message)
-						loop_.run_until_complete(co_)
+						await doOutput(message)
 				except json.JSONDecodeError:
 					pass
 

@@ -1,4 +1,5 @@
 import asyncio
+import asyncer
 import binascii
 from bleak import BleakClient
 import paho.mqtt.client as mqtt
@@ -53,35 +54,41 @@ def pack_frame(type_, payload):
 	return pkt
 
 
-# async def ble_connect(address):
-# 	async with BleakClient(address) as client:
-# 		dev_name = await client.read_gatt_char(DEV_NAME_UUID)
-# 		print("Model Number: {0}".format("".join(map(chr, dev_name))))
+async def ble_connect(address):
+	# async with BleakClient(address) as client:
+	client = BleakClient(address)
+	await client.connect()
 
-# 		services = await client.get_services()
-# 		shock_service = services.get_service(SHOCK_SERV_UUID)
-# 		print(shock_service)
+	dev_name = await client.read_gatt_char(DEV_NAME_UUID)
+	print("Model Number: {0}".format("".join(map(chr, dev_name))))
 
-# 		response_characteristic = shock_service.get_characteristic(RESPONSE_CHAR_UUID)
-# 		command_characteristic = shock_service.get_characteristic(COMMAND_CHAR_UUID)
-# 		print(response_characteristic, command_characteristic)
+	services = await client.get_services()
+	shock_service = services.get_service(SHOCK_SERV_UUID)
+	print(shock_service)
 
-# 		def reply_cb(_handle, data):
-# 			# print(f"resp {binascii.hexlify(data)}")
+	response_characteristic = shock_service.get_characteristic(RESPONSE_CHAR_UUID)
+	command_characteristic = shock_service.get_characteristic(COMMAND_CHAR_UUID)
+	print(response_characteristic, command_characteristic)
 
-# 			resp_type, resp_payload = unpack_frame(data)
-# 			if resp_type is None:
-# 				print(f"INVALID resp {binascii.hexlify(data)}")
-# 			else:
-# 				print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
+	def reply_cb(_handle, data):
+		# print(f"resp {binascii.hexlify(data)}")
 
-# 		await client.start_notify(response_characteristic, reply_cb)
+		resp_type, resp_payload = unpack_frame(data)
+		if resp_type is None:
+			print(f"INVALID resp {binascii.hexlify(data)}")
+		else:
+			print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
 
-# 		return (client, command_characteristic)
+	await client.start_notify(response_characteristic, reply_cb)
+
+	return (client, command_characteristic)
 
 
-# ble_client, command_characteristic = asyncio.run(ble_connect(address))
-# print(ble_client)
+# ble_client, command_characteristic = asyncer.syncify(ble_connect)(address)
+loop_ = asyncio.get_event_loop()
+co_ = ble_connect(address)
+ble_client, command_characteristic = loop_.run_until_complete(co_)
+print(ble_client)
 
 
 totp = pyotp.TOTP('base32secret3232')
@@ -96,30 +103,7 @@ async def doOutput(message):
 
 		print("testtesttest")
 		try:
-			async with BleakClient(address) as client:
-				dev_name = await client.read_gatt_char(DEV_NAME_UUID)
-				print("Model Number: {0}".format("".join(map(chr, dev_name))))
-
-				services = await client.get_services()
-				shock_service = services.get_service(SHOCK_SERV_UUID)
-				print(shock_service)
-
-				response_characteristic = shock_service.get_characteristic(RESPONSE_CHAR_UUID)
-				command_characteristic = shock_service.get_characteristic(COMMAND_CHAR_UUID)
-				print(response_characteristic, command_characteristic)
-
-				def reply_cb(_handle, data):
-					# print(f"resp {binascii.hexlify(data)}")
-
-					resp_type, resp_payload = unpack_frame(data)
-					if resp_type is None:
-						print(f"INVALID resp {binascii.hexlify(data)}")
-					else:
-						print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
-
-				await client.start_notify(response_characteristic, reply_cb)
-
-				await client.write_gatt_char(command_characteristic, pack_frame(16, bytes([30])), False)
+			await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([30])), False)
 		except Exception as e:
 			print(e)
 
@@ -140,7 +124,10 @@ def on_message(client, userdata, msg):
 		try:
 			message = json.loads(msg.payload.decode())
 			if totp.verify(message["value"]):
-				asyncio.run(doOutput(message))
+				# asyncer.syncify(doOutput)(message)
+				loop_ = asyncio.get_event_loop()
+				co_ = doOutput(message)
+				loop_.run_until_complete(co_)
 		except json.JSONDecodeError:
 			pass
 		

@@ -7,9 +7,20 @@ import pyotp
 import struct
 import json
 import asyncio_mqtt 
+import configparser
 
+config = configparser.ConfigParser()
+config.read('settings.ini')
 
-address = "68:35:32:39:29:7F"
+# Device Settings
+address = config["device"]["address"]
+interface = config["device"]["interface"]
+
+# Connection Settings
+endpoint_name = config["connection"]["endpoint"]
+machine_id = config["connection"]["machine_id"]
+key = config["connection"]["otpcode"]
+
 DEV_NAME_UUID = "00002a00-0000-1000-8000-00805f9b34fb"
 
 SHOCK_SERV_UUID = "0000fff0-0000-1000-8000-00805f9b34fb"
@@ -85,9 +96,9 @@ class ReplyCBWrapper:
 
 reply_cb_thing = ReplyCBWrapper()
 
-async def ble_connect(address):
+async def ble_connect(address, device=None):
 	# async with BleakClient(address) as client:
-	client = BleakClient(address, device="hci1")
+	client = BleakClient(address, device=device)
 	await client.connect()
 
 	dev_name = await client.read_gatt_char(DEV_NAME_UUID)
@@ -105,7 +116,8 @@ async def ble_connect(address):
 
 	return (client, response_characteristic, command_characteristic)
 
-totp = pyotp.TOTP('base32secret3232')
+
+totp = pyotp.TOTP(key)
 
 lastKey = None
 
@@ -155,14 +167,9 @@ async def doOutput(message):
 		except Exception as e:
 			print(e)
 
-endpoint_name = "test/output/electrical"
-
-machine_id = "supertestpleaseign"
-
-
 async def main():
 	global ble_client, response_characteristic, command_characteristic
-	ble_client, response_characteristic, command_characteristic = await ble_connect(address)
+	ble_client, response_characteristic, command_characteristic = await ble_connect(address, interface)
 	print(ble_client)
 	async with asyncio_mqtt.Client("broker.hivemq.com", 1883, client_id=machine_id, clean_session=False) as mqttc:
 		async with mqttc.filtered_messages(endpoint_name) as messages:

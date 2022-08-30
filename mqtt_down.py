@@ -72,7 +72,7 @@ class ReplyCBWrapper:
 	def __iter__(self):
 		return self
 
-	def __next__(self)
+	def __next__(self):
 		while len(self.responses) == 0: 
 			pass
 		return self.responses.pop()

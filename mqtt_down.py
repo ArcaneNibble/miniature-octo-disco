@@ -117,7 +117,7 @@ def create_config_pkt(voice, volume,
 	for b in b1:
 		csum += b
 	b1 += bytes([csum & 0xff])
-	return pack_frame(0x27, b1)
+	return pack_frame(0x34, b1)
 
 async def doOutput(message):
 	global lastKey
@@ -129,17 +129,17 @@ async def doOutput(message):
 				reply_cb_thing.clear()
 				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(20, bytes([])), False)
-				await asyncio.wait_for(reply_cb_thing, timeout=5)
+				#await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 				voice = message["voice"] if "voice" in message else 0
 				volume = message["vol"] if "vol" in message else 0
 				vibration = message["vibration"] if "vibration" in message else 0
 				shock = message["shock"] if "shock" in message else 50
 				await ble_client.write_gatt_char(command_characteristic, create_config_pkt(voice, volume, vibration, shock), False)
-				await asyncio.wawait_forit(reply_cb_thing, timeout=5)
+				#await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x2A, bytes([])), False)
-				await asyncio.wait_for(reply_cb_thing, timeout=5)
+				#await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 			elif (message["mode"] == "shock"):
 				reply_cb_thing.clear()

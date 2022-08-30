@@ -64,6 +64,7 @@ class ReplyCBWrapper:
 		# print(f"resp {binascii.hexlify(data)}")
 		resp_type, resp_payload = unpack_frame(data)
 		self.responses.append([resp_type, resp_payload])
+		self.event.set()
 		if resp_type is None:
 			print(f"INVALID resp {binascii.hexlify(data)}")
 		else:
@@ -72,11 +73,15 @@ class ReplyCBWrapper:
 	def __await__(self):
 		async def fun():
 			await self.event.wait()
-			return self.responses.pop()
+			out = self.responses.pop()
+			if (len(self.responses) == 0):
+				self.event.clear()
+			return out
 		return fun().__await__()
 
 	def clear(self):
 		self.responses = []
+		self.event.clear()
 
 reply_cb_thing = ReplyCBWrapper()
 

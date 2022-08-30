@@ -53,6 +53,14 @@ def pack_frame(type_, payload):
 
 	return pkt
 
+def reply_cb(_handle, data):
+	# print(f"resp {binascii.hexlify(data)}")
+
+	resp_type, resp_payload = unpack_frame(data)
+	if resp_type is None:
+		print(f"INVALID resp {binascii.hexlify(data)}")
+	else:
+		print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
 
 async def ble_connect(address):
 	# async with BleakClient(address) as client:
@@ -70,24 +78,15 @@ async def ble_connect(address):
 	command_characteristic = shock_service.get_characteristic(COMMAND_CHAR_UUID)
 	print(response_characteristic, command_characteristic)
 
-	def reply_cb(_handle, data):
-		# print(f"resp {binascii.hexlify(data)}")
+	# await client.start_notify(response_characteristic, reply_cb)
 
-		resp_type, resp_payload = unpack_frame(data)
-		if resp_type is None:
-			print(f"INVALID resp {binascii.hexlify(data)}")
-		else:
-			print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
-
-	await client.start_notify(response_characteristic, reply_cb)
-
-	return (client, command_characteristic)
+	return (client, response_characteristic, command_characteristic)
 
 
 # ble_client, command_characteristic = asyncer.syncify(ble_connect)(address)
 loop_ = asyncio.get_event_loop()
 co_ = ble_connect(address)
-ble_client, command_characteristic = loop_.run_until_complete(co_)
+ble_client, response_characteristic, command_characteristic = loop_.run_until_complete(co_)
 print(ble_client)
 
 
@@ -103,7 +102,8 @@ async def doOutput(message):
 
 		print("testtesttest")
 		try:
-			await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([30])), False)
+			await ble_client.start_notify(response_characteristic, reply_cb)
+			await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([99])), False)
 		except Exception as e:
 			print(e)
 

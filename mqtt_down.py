@@ -53,14 +53,34 @@ def pack_frame(type_, payload):
 
 	return pkt
 
-def reply_cb(_handle, data):
-	# print(f"resp {binascii.hexlify(data)}")
 
-	resp_type, resp_payload = unpack_frame(data)
-	if resp_type is None:
-		print(f"INVALID resp {binascii.hexlify(data)}")
-	else:
-		print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
+class ReplyCBWrapper:
+	responses = []
+
+	def reply_cb(self, _handle, data):
+		# print(f"resp {binascii.hexlify(data)}")
+		resp_type, resp_payload = unpack_frame(data)
+		self.responses.append([resp_type, resp_payload])
+		if resp_type is None:
+			print(f"INVALID resp {binascii.hexlify(data)}")
+		else:
+			print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
+
+	def __await__(self):
+		return self
+	
+	def __iter__(self):
+		return self
+
+	def __next__(self)
+		while len(self.responses) == 0: 
+			pass
+		return self.responses.pop()
+
+	def clear(self):
+		self.responses = []
+
+reply_cb_thing = ReplyCBWrapper()
 
 async def ble_connect(address):
 	# async with BleakClient(address) as client:
@@ -94,16 +114,39 @@ totp = pyotp.TOTP('base32secret3232')
 
 lastKey = None
 
+def create_config_pkt(voice: int, volume: int, 
+		vibration: int, shock: int, 
+		idx=1: int, num=1: int):
+	frmt = ">BBBBBHBBB"
+	b1 = struct.pack(frmt, idx, num, 0x00, 0x01, 0x3c, voice, volume, vibration, shock)
+	csum = 0
+	for b in b1:
+		csum += b
+	b1 += bytes([csum & 0xff])
+	return pack_frame(0x27, b1)
+
 async def doOutput(message):
 	global lastKey
 
 	if (message["value"] != lastKey):
 		lastKey = message["value"]
-
-		print("testtesttest")
 		try:
-			await ble_client.start_notify(response_characteristic, reply_cb)
-			await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([99])), False)
+			if ((not "mode" in message) or (message["mode"] == "config_run")):
+				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
+				await ble_client.write_gatt_char(command_characteristic, pack_frame(20, bytes([])), False)
+				asyncio.wait_for(reply_cb_thing, timeout=5)
+				reply_cb_thing.clear()
+				voice = message["voice"] if "voice" in message else 0
+				volume = message["vol"] if "vol" in message else 0
+				voice = message["vibration"] if "vibration" in message else 0
+				voice = message["shock"] if "shock" in message else 50
+				await ble_client.write_gatt_char(command_characteristic, create_config_pkt(), False)
+				asyncio.wait_for(reply_cb_thing, timeout=5)
+				reply_cb_thing.clear()
+				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x2A, bytes([])), False)
+				asyncio.wait_for(reply_cb_thing, timeout=5)
+				reply_cb_thing.clear()
+			# Todo add more
 		except Exception as e:
 			print(e)
 

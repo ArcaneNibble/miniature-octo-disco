@@ -58,6 +58,7 @@ def pack_frame(type_, payload):
 
 class ReplyCBWrapper:
 	responses = []
+	event = asyncio.Event()
 
 	def reply_cb(self, _handle, data):
 		# print(f"resp {binascii.hexlify(data)}")
@@ -69,15 +70,10 @@ class ReplyCBWrapper:
 			print(f"resp type {resp_type} payload {binascii.hexlify(resp_payload)}")
 
 	def __await__(self):
-		return self
-	
-	def __iter__(self):
-		return self
-
-	def __next__(self):
-		while len(self.responses) == 0: 
-			pass
-		return self.responses.pop()
+		async def fun():
+			await self.event.wait()
+			return self.responses.pop()
+		return fun().__await__()
 
 	def clear(self):
 		self.responses = []
@@ -129,17 +125,17 @@ async def doOutput(message):
 				reply_cb_thing.clear()
 				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(20, bytes([])), False)
-				#await asyncio.wait_for(reply_cb_thing, timeout=5)
+				await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 				voice = message["voice"] if "voice" in message else 0
 				volume = message["vol"] if "vol" in message else 0
 				vibration = message["vibration"] if "vibration" in message else 0
 				shock = message["shock"] if "shock" in message else 50
 				await ble_client.write_gatt_char(command_characteristic, create_config_pkt(voice, volume, vibration, shock), False)
-				#await asyncio.wait_for(reply_cb_thing, timeout=5)
+				await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x2A, bytes([])), False)
-				#await asyncio.wait_for(reply_cb_thing, timeout=5)
+				await asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 			elif (message["mode"] == "shock"):
 				reply_cb_thing.clear()

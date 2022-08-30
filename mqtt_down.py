@@ -87,7 +87,7 @@ reply_cb_thing = ReplyCBWrapper()
 
 async def ble_connect(address):
 	# async with BleakClient(address) as client:
-	client = BleakClient(address)
+	client = BleakClient(address, device="hci1")
 	await client.connect()
 
 	dev_name = await client.read_gatt_char(DEV_NAME_UUID)
@@ -112,13 +112,13 @@ lastKey = None
 def create_config_pkt(voice, volume, 
 		vibration, shock, 
 		idx=1, num=1):
-	frmt = ">BBBBBHBBB"
+	frmt = ">BHBHBHBBB"
 	b1 = struct.pack(frmt, idx, num, 0x00, 0x01, 0x3c, voice, volume, vibration, shock)
 	csum = 0
 	for b in b1:
 		csum += b
 	b1 += bytes([csum & 0xff])
-	return pack_frame(0x34, b1)
+	return pack_frame(0x27, b1)
 
 async def doOutput(message):
 	global lastKey

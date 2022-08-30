@@ -73,7 +73,7 @@ def fragment_packet(payload, key=1, num_keys=1, checksum_all=False):
     return frags
 
 async def main(address):
-    async with BleakClient(address) as client:
+    async with BleakClient(address, device="hci1") as client:
         dev_name = await client.read_gatt_char(DEV_NAME_UUID)
         print("Model Number: {0}".format("".join(map(chr, dev_name))))
 
@@ -112,17 +112,17 @@ async def main(address):
         # await client.write_gatt_char(command_characteristic, pack_frame(1, bytes([0, 0, 0, 0, 0, 0, 0, 0])), False)
         # await client.write_gatt_char(command_characteristic, pack_frame(32, b''), False)
 
-        # await client.write_gatt_char(command_characteristic, pack_frame(20, b''), False)
-        # await client.write_gatt_char(command_characteristic, pack_frame(39, fragment_packet(b'\x3c\x00\x01\xff\xff\x20')[0]), False)
+        await client.write_gatt_char(command_characteristic, pack_frame(20, b''), False)
+        await client.write_gatt_char(command_characteristic, pack_frame(52, fragment_packet(b'\x3c\x00\x01\xff\xff\xff')[0]), False)
 
         # await client.write_gatt_char(command_characteristic, pack_frame(20, b''), False)
         # await client.write_gatt_char(command_characteristic, pack_frame(13, fragment_packet(b'\x01A')[0]), False)
 
-        await client.write_gatt_char(command_characteristic, pack_frame(20, b''), False)
-        await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x10', 1, 4, True)[0]), False)
-        await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x20', 2, 4, True)[0]), False)
-        await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x30', 3, 4, True)[0]), False)
-        await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x40', 4, 4, True)[0]), False)
+        # await client.write_gatt_char(command_characteristic, pack_frame(20, b''), False)
+        # await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x10', 1, 4, True)[0]), False)
+        # await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x20', 2, 4, True)[0]), False)
+        # await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x30', 3, 4, True)[0]), False)
+        # await client.write_gatt_char(command_characteristic, pack_frame(6, fragment_packet(b'\x3c\x00\x01\xff\xff\x40', 4, 4, True)[0]), False)
         # await asyncio.sleep(10)
 
 asyncio.run(main(address))

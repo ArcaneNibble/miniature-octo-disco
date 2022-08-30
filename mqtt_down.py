@@ -6,6 +6,7 @@ import paho.mqtt.client as mqtt
 import pyotp
 import struct
 import json
+import asyncio_mqtt 
 
 
 address = "68:35:32:39:29:7F"
@@ -143,7 +144,7 @@ async def doOutput(message):
 				vibration = message["vibration"] if "vibration" in message else 0
 				shock = message["shock"] if "shock" in message else 50
 				await ble_client.write_gatt_char(command_characteristic, create_config_pkt(voice, volume, vibration, shock), False)
-				await asyncio.wait_for(reply_cb_thing, timeout=5)
+				await asyncio.wawait_forit(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x2A, bytes([])), False)
 				await asyncio.wait_for(reply_cb_thing, timeout=5)
@@ -165,27 +166,21 @@ endpoint_name = "test/output/electrical"
 
 machine_id = "supertestpleaseign"
 
-mqttc = mqtt.Client(machine_id, clean_session=False)
-mqttc.connect("broker.hivemq.com", 1883)
-mqttc.subscribe(endpoint_name, qos=1)
 
-def on_disconnect(client, userdata, rc):
-	if rc != 0:
-		print("Unexpected MQTT disconnection. Will auto-reconnect")
+async def main():
+	async with asyncio_mqtt.Client("broker.hivemq.com", 1883, client_id=machine_id, clean_session=False) as mqttc:
+		async with mqttc.filtered_messages(endpoint_name) as messages:
+			await mqttc.subscribe(endpoint_name, qos=1)
+			async for msg in messages:
+				try:
+					message = json.loads(msg.payload.decode())
+					if totp.verify(message["value"]):
+						# asyncer.syncify(doOutput)(message)
+						loop_ = asyncio.get_event_loop()
+						co_ = doOutput(message)
+						loop_.run_until_complete(co_)
+				except json.JSONDecodeError:
+					pass
 
-def on_message(client, userdata, msg):
-	if msg.topic == endpoint_name:
-		try:
-			message = json.loads(msg.payload.decode())
-			if totp.verify(message["value"]):
-				# asyncer.syncify(doOutput)(message)
-				loop_ = asyncio.get_event_loop()
-				co_ = doOutput(message)
-				loop_.run_until_complete(co_)
-		except json.JSONDecodeError:
-			pass
-		
-#mqttc.on_connect = on_connect
-mqttc.on_message = on_message
-mqttc.on_disconnect = on_disconnect
-mqttc.loop_forever()
+
+asyncio.run(main())

@@ -104,14 +104,6 @@ async def ble_connect(address):
 
 	return (client, response_characteristic, command_characteristic)
 
-
-# ble_client, command_characteristic = asyncer.syncify(ble_connect)(address)
-loop_ = asyncio.get_event_loop()
-co_ = ble_connect(address)
-ble_client, response_characteristic, command_characteristic = loop_.run_until_complete(co_)
-print(ble_client)
-
-
 totp = pyotp.TOTP('base32secret3232')
 
 lastKey = None
@@ -168,6 +160,9 @@ machine_id = "supertestpleaseign"
 
 
 async def main():
+	global ble_client, response_characteristic, command_characteristic
+	ble_client, response_characteristic, command_characteristic = await ble_connect(address)
+	print(ble_client)
 	async with asyncio_mqtt.Client("broker.hivemq.com", 1883, client_id=machine_id, clean_session=False) as mqttc:
 		async with mqttc.filtered_messages(endpoint_name) as messages:
 			await mqttc.subscribe(endpoint_name, qos=1)

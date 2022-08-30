@@ -4,6 +4,7 @@ import binascii
 from bleak import BleakClient
 import paho.mqtt.client as mqtt
 import pyotp
+import struct
 import json
 
 
@@ -114,9 +115,9 @@ totp = pyotp.TOTP('base32secret3232')
 
 lastKey = None
 
-def create_config_pkt(voice: int, volume: int, 
-		vibration: int, shock: int, 
-		idx=1: int, num=1: int):
+def create_config_pkt(voice, volume, 
+		vibration, shock, 
+		idx=1, num=1):
 	frmt = ">BBBBBHBBB"
 	b1 = struct.pack(frmt, idx, num, 0x00, 0x01, 0x3c, voice, volume, vibration, shock)
 	csum = 0
@@ -149,14 +150,14 @@ async def doOutput(message):
 				reply_cb_thing.clear()
 			elif (message["mode"] == "shock"):
 				reply_cb_thing.clear()
-				await ble_client.start_notify(response_characteristic, reply_cb)
+				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
 				power = message["shock"] if "shock" in message else 50
-                await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([power])), False)
+				await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([power])), False)
 			elif (message["mode"] == "vibration"):
 				reply_cb_thing.clear()
-				await ble_client.start_notify(response_characteristic, reply_cb)
+				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
 				power = message["vibration"] if "vibration" in message else 3
-                await ble_client.write_gatt_char(command_characteristic, pack_frame(0x0F, bytes([power])), False)
+				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x0F, bytes([power])), False)
 		except Exception as e:
 			print(e)
 

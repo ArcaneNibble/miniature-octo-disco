@@ -132,6 +132,7 @@ async def doOutput(message):
 		lastKey = message["value"]
 		try:
 			if ((not "mode" in message) or (message["mode"] == "config_run")):
+				reply_cb_thing.clear()
 				await ble_client.start_notify(response_characteristic, reply_cb_thing.reply_cb)
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(20, bytes([])), False)
 				asyncio.wait_for(reply_cb_thing, timeout=5)
@@ -146,7 +147,16 @@ async def doOutput(message):
 				await ble_client.write_gatt_char(command_characteristic, pack_frame(0x2A, bytes([])), False)
 				asyncio.wait_for(reply_cb_thing, timeout=5)
 				reply_cb_thing.clear()
-			# Todo add more
+			elif (message["mode"] == "shock"):
+				reply_cb_thing.clear()
+				await ble_client.start_notify(response_characteristic, reply_cb)
+				power = message["shock"] if "shock" in message else 50
+                await ble_client.write_gatt_char(command_characteristic, pack_frame(16, bytes([power])), False)
+			elif (message["mode"] == "vibration"):
+				reply_cb_thing.clear()
+				await ble_client.start_notify(response_characteristic, reply_cb)
+				power = message["vibration"] if "vibration" in message else 3
+                await ble_client.write_gatt_char(command_characteristic, pack_frame(0x0F, bytes([power])), False)
 		except Exception as e:
 			print(e)
 
